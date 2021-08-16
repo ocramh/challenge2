@@ -84,3 +84,6 @@ The `Evictor` interface used by the `MemIndexer` struct allows for more sophisti
 The Provider module mediates access with the content Indexer and it is the outer access layer that is being made available through an HTTP server. This layer could be potentially used for providing access to a UI, integrating monitoring or auditing middlewares and more.
 
 ## Further considerations
+While exploring the IPLD and IPFS ecosystem I considered the idea of representing the content availbale to the indexer using linked data, where the root node would be represented by the hash of the content included with its children (EG files).
+The advantage of this representation is the verifiability of the Indexer content integrity as well as the possibilty of traversing and searching the resulting linked tree given any node CID.
+Due to my lack of experience - and probably limited understanding - in working with the existing libraries my attempts fell short of a working implementation.
