@@ -15,8 +15,8 @@ import (
 // KVStore is the key - value store used to track the available blocks of content
 type KVStore map[content.BlockKey]*content.Block
 
-// MemIndex is an implementation of the Indexer interface which keep track of the
-// available storage using an in-memory map.
+// MemIndex is an implementation of the Indexer interface which keeps track of the
+// available storage using an in-memory key value map.
 // Internally it has access to the underlying storage implementation for adding,
 // accessing, removing and syncing the actual data
 type MemIndex struct {
