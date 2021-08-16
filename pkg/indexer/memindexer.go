@@ -42,13 +42,6 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if len(m.kvStore) == m.maxCapacity {
-		err := m.resizeStore()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(src)
 
@@ -59,6 +52,13 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 
 	if b, ok := m.kvStore[content.BlockKeyFromCid(srcCid)]; ok {
 		return b, nil
+	}
+
+	if len(m.kvStore) == m.maxCapacity {
+		err := m.resizeStore()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// add new content to storage
