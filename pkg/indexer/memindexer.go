@@ -44,8 +44,9 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(src)
+	srcAsBytes := buf.Bytes()
 
-	srcCid, err := content.CidFromBytes(buf.Bytes())
+	srcCid, err := content.CidFromBytes(srcAsBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +63,12 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 	}
 
 	// add new content to storage
-	addr, err := m.storage.Put(buf.Bytes(), path.Join(m.rootDir, name))
+	addr, err := m.storage.Put(srcAsBytes, path.Join(m.rootDir, name))
 	if err != nil {
 		return nil, err
 	}
 
-	block, err := content.NewBlock(buf.Bytes(), addr)
+	block, err := content.NewBlock(srcAsBytes, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +85,17 @@ func (m *MemIndex) resizeStore() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *MemIndex) evictBlock() error {
+	rmAddr := m.evictStrategy.EvictBlock(m.kvStore)
+	if rmAddr != nil {
+		return m.storage.Delete(&content.Address{
+			Filepath: rmAddr.Filepath,
+		})
 	}
 
 	return nil
@@ -118,15 +130,4 @@ func (m *MemIndex) Size() int {
 
 func (m *MemIndex) Capacity() int {
 	return m.maxCapacity
-}
-
-func (m *MemIndex) evictBlock() error {
-	rmAddr := m.evictStrategy.EvictBlock(m.kvStore)
-	if rmAddr != nil {
-		return m.storage.Delete(&content.Address{
-			Filepath: rmAddr.Filepath,
-		})
-	}
-
-	return nil
 }
