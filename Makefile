@@ -2,7 +2,7 @@ PKG=github.com/ocramh/challenge2
 
 .PHONY: install
 install:
-	go install ${PKG}/cmd/challenge2
+	go install ${PKG}/cmd/provider
 
 .PHONY: test
 test:
