@@ -47,7 +47,7 @@ In a separate command line panel run
 > provider client add --item=hello
 ```
 To add a new object (in this case the string `hello`). The provider will return the CID generated for the provided item.
-The CID can be used to retrieve some item information such as its path, hits count etc
+The CID can be used to retrieve some item information such as its path, the encoded data etc
 ```
 > provider client get --cid=<the-cid>
 ```

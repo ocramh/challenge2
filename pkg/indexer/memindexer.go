@@ -79,7 +79,7 @@ func (m *MemIndex) evictBlock() error {
 		return m.storage.Delete(rmAddr)
 	}
 
-	return nil
+	return ErrNoItemFound
 }
 
 func (m *MemIndex) Get(blockID cid.Cid) (*content.Block, []byte, error) {
