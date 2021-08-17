@@ -18,12 +18,12 @@ func (e EvictLeastPopular) EvictBlock(store KVStore) *content.Address {
 	}
 
 	c := 0
-	var toEvict content.BlockKey
+	var evictKey string
 	var evictedAddr *content.Address
 	var lowestHitsCount = 0
 	for k, v := range store {
 		if c == 0 {
-			toEvict = k
+			evictKey = k
 			lowestHitsCount = v.GetHitsCount()
 			evictedAddr = &v.Address
 			c++
@@ -31,7 +31,7 @@ func (e EvictLeastPopular) EvictBlock(store KVStore) *content.Address {
 		}
 
 		if lowestHitsCount > v.GetHitsCount() {
-			toEvict = k
+			evictKey = k
 			lowestHitsCount = v.GetHitsCount()
 			evictedAddr = &v.Address
 		}
@@ -39,7 +39,7 @@ func (e EvictLeastPopular) EvictBlock(store KVStore) *content.Address {
 		c++
 	}
 
-	delete(store, toEvict)
+	delete(store, evictKey)
 
 	return evictedAddr
 }

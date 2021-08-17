@@ -19,27 +19,31 @@ func New(cap int, rootDir string) (*Provider, error) {
 		return nil, err
 	}
 
+	evictStrategy := indexer.EvictLeastPopular{}
+	store := storage.NewBlocksStore(cap)
+
 	return &Provider{
-		idx: indexer.NewMemoryIndex(
-			rootDir, cap, indexer.EvictLeastPopular{}, storage.NoopStore{},
-		),
+		idx: indexer.NewMemoryIndex(evictStrategy, store),
 	}, nil
 }
 
-func (p *Provider) AddItem(b []byte) ([]*content.Block, error) {
-	block, err := p.idx.Put(bytes.NewReader(b), string(b))
-	if err != nil {
-		return nil, err
-	}
-
-	return []*content.Block{block}, nil
+func (p *Provider) AddItem(b []byte) (*content.Block, error) {
+	return p.idx.Put(bytes.NewReader(b), string(b))
 }
 
-func (p *Provider) GetItem(key content.BlockKey) (*content.Block, error) {
-	block, err := p.idx.Get(key)
+func (p *Provider) GetItem(key string) (*content.BlockWithData, error) {
+	blockCid, err := content.CidFromString(key)
 	if err != nil {
 		return nil, err
 	}
 
-	return block, nil
+	block, data, err := p.idx.Get(blockCid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &content.BlockWithData{
+		Data:  data,
+		Block: *block,
+	}, nil
 }

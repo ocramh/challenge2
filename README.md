@@ -51,23 +51,31 @@ The CID can be used to retrieve some item information such as its path, hits cou
 ```
 > provider client get --cid=<the-cid>
 ```
+Issuing these commands will print out the result of the operation formatted as JSON.
 
 ## Repo structure and design considerations
 The core logic of this package is subdivided into modules available inside the /pkg directory.
 
 ### Storage module
-The Storage module exposes an interface for adding, removing and retrieving raw content from the underlying storage such as the local file system. This module is mainly concerned with how raw data is persisted and it does not deal with any metadata with the exception of the content path. The current implementation used here bypasses the actual storage of content and should only be seen as a noop version.
+The Storage module exposes the `Storage` interface for adding, removing and retrieving raw content from the underlying storage. This module is mainly concerned with how and where raw data is persisted. Concrete implementations are not directly responsible for handling the eviction of content in case of overflow. Instead they will simply return an `ErrNoStorageAvailable` error type when this happens further up the chain.
+
+The `BlockStore` implementation used by the content provider is based on a merkel DAG representation of the available blocks of content backed by an in-memory datastore.
+This was my attempt at both exploring the IPLD and IPFS ecosystem and bridging together content with its representation as a tree of linked nodes whose identifiers can be used to verify content integrity.
+Even if this resulted in adding another level of indirection, a benefit of this implementation is that the underlying block storage can be replaced by any type implementing the ipfs `Blockstore` interface (such as a wrapper layer around a database, the file system etc), while delegating and abstracting away nodes management to the `DAGService`.
+
+The `SimpleStore` type also included in the /storage folder was the first concrete implementation of the `Storage` interface. This version does not provide a tree-like layout of the available data but simply stores content in a key value map.
+
+The choice of using the `BlockStore` implementation by default felt a more appropriate attempt at providing a solution based on content addressing rather than location addressing.
 
 ### Indexer module
-The Indexer module is responsible for managing the provider storage state. It’s the layer between the raw storage and IO operations and provides functionalities for efficiently fetching data and metadata as well as managing the provider storage capacity.
-The main functionalities of the Indexer interface are:
+The Indexer module is responsible for managing the provider storage state. It’s the layer between the storage module and IO operations and provides functionalities for efficiently fetching data and metadata as well as managing content eviction in case there is no available storage space.
+The main functionalities of the `Indexer` interface are:
 - the retrieval of content given its CID from the underlying storage layer
 - the storage of blocks in the underlying storage layer
 
 Its `MemIndexer` implementation uses an in memory key-value map for associating the CID of individual blocks of content to metadata specific to the content itself.
 This metadata includes:
-- The block CID
-- Block Address (path to the actual content)
+- Block Address
 - Hits count (the number of times the block has been queried)
 - Block size
 - Block creation timestamp
@@ -75,15 +83,19 @@ This metadata includes:
 
 The internal usage of a map has been chosen for providing fast access to content given its identifier. Using CIDs as keys ensure that only unique blocks of content will be stored at any given time.
 
-**Storage Size Management**
-The `MemIndexer` storage size is naively measured in numbers of blocks being stored. While this option provides a simple mechanism to test against, it should be replaced by using the actual file size of the various blocks of content being committed to storage.
-As new blocks of content are submitted by clients, the `MemIndexer` will check the current storage size against its maximum capacity and when the two values are equal the block with the lowest number of hits will be removed from both the key-value map and the underlying data storage.
-The `Evictor` interface used by the `MemIndexer` struct allows for more sophisticated algorithms to be used for removing least frequently accessed items.
+### Provider module
+The Provider module mediates access to the content Indexer. It is the outer layer which is made available to external clients through an HTTP server. This layer could potentially be used for  integrating monitoring or auditing middlewares and more.
 
-### Provider
-The Provider module mediates access with the content Indexer and it is the outer access layer that is being made available through an HTTP server. This layer could be potentially used for providing access to a UI, integrating monitoring or auditing middlewares and more.
+## Storage Size Management
+The storage size is naively measured in numbers of blocks being stored. While this option provides a simple mechanism to test against, it should be replaced by using the actual storage size of the various blocks of content being committed.
+As new blocks of content are submitted by clients, the `MemIndexer` will check the storage layer current size against its maximum capacity and when the two values are equal the block with the lowest number of hits will be removed from both the key-value map and the underlying data storage.
+The `Evictor` interface used by the `MemIndexer` type allows for more sophisticated algorithms to be used for removing least frequently accessed items.
 
-## Further considerations
-While exploring the IPLD and IPFS ecosystem I considered the idea of representing the content available to the indexer using linked data, where the root node would be represented by the hash of the content of its children (EG files).
-The advantage of this representation is the verifiability of the Indexer content integrity as well as the possibilty of traversing and searching the resulting linked tree given any node CID.
-Due to my lack of experience - and probably limited understanding - in working with the existing libraries my attempts fell short of a working implementation.
+## Further Considerations
+While the proposed solution is the result of applying concepts related to content addressing to storage and retrieval, it should be seen as an experimental working prototype rather than a ready-to-go solution. Few topics which haven't been explored here can be incorporated by expanding on plugging into the existing types and interfaces. These include
+- alternatives and more structred ways of using linked data to represent content
+- the actual storage of files (and how to calculate the total storage size)
+- how to ensure consistency between the indexer and the storage types (IE how to keep them in sync)
+- how to load content from different root folders
+- how to load content already available in storage when the application starts
+- improve thread-safety

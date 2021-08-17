@@ -7,22 +7,27 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-// BlockKey string representation of a Cid
-type BlockKey string
-
-func BlockKeyFromCid(c cid.Cid) BlockKey {
-	return BlockKey(c.String())
+// Address defines the location of a block of content, either identified by its CID or
+// its file path
+type Address struct {
+	Cid      cid.Cid
+	NodeName string
+	Path     string
 }
 
-// Address defines the location of a block of content
-type Address struct {
-	Filepath string `json:"file_path"`
+func (a *Address) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Cid  string `json:"cid"`
+		Path string `json:"path"`
+	}{
+		Cid:  a.Cid.String(),
+		Path: a.Path,
+	})
 }
 
 // Block is a unit of content. It contains basic information necessary for retrieving
 // the original content and evaluating the freshness of its data.
 type Block struct {
-	ID             cid.Cid   `json:"-"`
 	Address        Address   `json:"address"`
 	CreatedAt      time.Time `json:"created_at"`
 	size           int
@@ -30,36 +35,21 @@ type Block struct {
 	lastAccessedAt *time.Time
 }
 
-func NewBlock(data []byte, addr *Address) (*Block, error) {
-	blockCid, err := CidFromBytes(data)
-	if err != nil {
-		return nil, err
-	}
+type BlockWithData struct {
+	Data []byte `json:"data"`
+	Block
+}
 
+func NewBlock(data []byte, addr *Address) (*Block, error) {
 	return &Block{
-		ID:        blockCid,
 		size:      len(data),
 		CreatedAt: time.Now(),
 		Address:   *addr,
 	}, nil
 }
 
-func (b *Block) MarshalJSON() ([]byte, error) {
-	type BlockAlias Block
-	return json.Marshal(&struct {
-		ID        string `json:"cid"`
-		HitsCount int    `json:"hits_count"`
-		*BlockAlias
-	}{
-		ID:         b.ID.String(),
-		HitsCount:  b.GetHitsCount(),
-		BlockAlias: (*BlockAlias)(b),
-	})
-}
-
-// Key returns a BlockKey representation of the cid
-func (b *Block) Key() BlockKey {
-	return BlockKey(b.ID.String())
+func (b *Block) ID() string {
+	return b.Address.Cid.String()
 }
 
 func (b *Block) Size() int {

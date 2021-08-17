@@ -2,16 +2,19 @@ package content
 
 import (
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 )
 
 func CidFromBytes(b []byte) (cid.Cid, error) {
-	pref := cid.Prefix{
-		Version:  1,
-		Codec:    cid.Raw,
-		MhType:   multihash.SHA2_256,
-		MhLength: -1,
+	format := cid.V0Builder{}
+
+	return format.Sum(b)
+}
+
+func CidFromString(c string) (cid.Cid, error) {
+	decoded, err := cid.Decode(c)
+	if err != nil {
+		return cid.Undef, ErrInvalidCID
 	}
 
-	return pref.Sum(b)
+	return decoded, nil
 }
