@@ -48,12 +48,12 @@ func (s Server) addItemHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s Server) getItemHandler(w http.ResponseWriter, r *http.Request) {
 	blockCid := r.URL.Query().Get("cid")
-	b, err := s.prv.GetItem(content.BlockKey(blockCid))
+	blockData, err := s.prv.GetItem(blockCid)
 	if err != nil {
 		var status int
 		if errors.Is(err, indexer.ErrNoItemFound) {
 			status = http.StatusNotFound
-		} else if errors.Is(err, indexer.ErrInvalidCID) {
+		} else if errors.Is(err, content.ErrInvalidCID) {
 			status = http.StatusBadRequest
 		} else {
 			status = http.StatusInternalServerError
@@ -64,7 +64,7 @@ func (s Server) getItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	j, err := json.Marshal(b)
+	j, err := json.Marshal(blockData)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}

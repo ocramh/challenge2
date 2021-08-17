@@ -1,16 +1,31 @@
 package storage
 
 import (
+	"path"
+
 	"github.com/ocramh/challenge2/pkg/content"
 )
 
 // NoopStore is an implementation of the Storage interface which doesn't produce any
 // result or error
-type NoopStore struct{}
+type NoopStore struct {
+	roodDir string
+}
 
-func (n NoopStore) Put(b []byte, path string) (*content.Address, error) {
+func NewNoopStore(r string) NoopStore {
+	return NoopStore{r}
+}
+
+func (n NoopStore) Put(b []byte, name string) (*content.Address, error) {
+	cid, err := content.CidFromBytes(b)
+	if err != nil {
+		return nil, err
+	}
+
 	return &content.Address{
-		Filepath: path,
+		Cid:      cid,
+		Path:     path.Join(n.roodDir, name),
+		NodeName: name,
 	}, nil
 }
 

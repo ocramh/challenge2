@@ -3,6 +3,7 @@ package storage
 import (
 	"io/ioutil"
 	"os"
+	"path"
 
 	"github.com/ocramh/challenge2/pkg/content"
 )
@@ -10,8 +11,8 @@ import (
 // FileStore is an implementation of the Storage interface backed by file objects
 type FileStore struct{}
 
-func (fs FileStore) Put(b []byte, path string) (*content.Address, error) {
-	f, err := os.Create(path)
+func (fs FileStore) Put(b []byte, fpath string) (*content.Address, error) {
+	f, err := os.Create(fpath)
 	if err != nil {
 		return nil, err
 	}
@@ -21,13 +22,20 @@ func (fs FileStore) Put(b []byte, path string) (*content.Address, error) {
 		return nil, err
 	}
 
+	cid, err := content.CidFromBytes(b)
+	if err != nil {
+		return nil, err
+	}
+
 	return &content.Address{
-		Filepath: path,
+		Cid:      cid,
+		Path:     fpath,
+		NodeName: path.Base(fpath),
 	}, nil
 }
 
 func (fs FileStore) Get(addr *content.Address) ([]byte, error) {
-	f, err := os.Open(addr.Filepath)
+	f, err := os.Open(addr.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -36,5 +44,5 @@ func (fs FileStore) Get(addr *content.Address) ([]byte, error) {
 }
 
 func (fs FileStore) Delete(addr *content.Address) error {
-	return os.RemoveAll(addr.Filepath)
+	return os.RemoveAll(addr.Path)
 }

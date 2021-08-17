@@ -2,18 +2,15 @@ package provider
 
 import (
 	"bytes"
-	"log"
 	"os"
 
 	"github.com/ocramh/challenge2/pkg/content"
-	"github.com/ocramh/challenge2/pkg/dag"
 	"github.com/ocramh/challenge2/pkg/indexer"
 	"github.com/ocramh/challenge2/pkg/storage"
 )
 
 type Provider struct {
 	idx indexer.Indexer
-	nd  *dag.NodesManager
 }
 
 func New(cap int, rootDir string) (*Provider, error) {
@@ -24,39 +21,28 @@ func New(cap int, rootDir string) (*Provider, error) {
 
 	return &Provider{
 		idx: indexer.NewMemoryIndex(
-			rootDir, cap, indexer.EvictLeastPopular{}, storage.NoopStore{},
+			rootDir, cap, indexer.EvictLeastPopular{}, storage.NewBlocksStorage(),
 		),
-		nd: dag.NewNodesManager(),
 	}, nil
 }
 
-func (p *Provider) AddItem(b []byte) ([]*content.Block, error) {
-	block, err := p.idx.Put(bytes.NewReader(b), string(b))
-	if err != nil {
-		return nil, err
-	}
-
-	ndCid, err := p.nd.AddNodeLink(b, block.ID.String())
-	if err != nil {
-		return nil, err
-	}
-
-	log.Println(ndCid)
-
-	return []*content.Block{block}, nil
+func (p *Provider) AddItem(b []byte) (*content.Block, error) {
+	return p.idx.Put(bytes.NewReader(b), string(b))
 }
 
-func (p *Provider) GetItem(key content.BlockKey) (*content.Block, error) {
-	block, err := p.idx.Get(key)
+func (p *Provider) GetItem(key string) (*content.BlockWithData, error) {
+	blockCid, err := content.CidFromString(key)
 	if err != nil {
 		return nil, err
 	}
 
-	// node, err := p.nd.GetNodeLink(block.ID)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// log.Println(node.Cid())
+	block, data, err := p.idx.Get(blockCid)
+	if err != nil {
+		return nil, err
+	}
 
-	return block, nil
+	return &content.BlockWithData{
+		Data:  data,
+		Block: *block,
+	}, nil
 }

@@ -3,7 +3,6 @@ package indexer
 import (
 	"bytes"
 	"io"
-	"path"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -13,7 +12,7 @@ import (
 )
 
 // KVStore is the key - value store used to track the available blocks of content
-type KVStore map[content.BlockKey]*content.Block
+type KVStore map[string]*content.Block
 
 // MemIndex is an implementation of the Indexer interface which keeps track of the
 // available storage using an in-memory key value map.
@@ -32,7 +31,7 @@ func NewMemoryIndex(rootDir string, cap int, ev Evictor, store storage.StorageMa
 	return &MemIndex{
 		rootDir:       rootDir,
 		maxCapacity:   cap,
-		kvStore:       make(map[content.BlockKey]*content.Block),
+		kvStore:       make(map[string]*content.Block),
 		evictStrategy: ev,
 		storage:       store,
 	}
@@ -46,15 +45,6 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 	buf.ReadFrom(src)
 	srcAsBytes := buf.Bytes()
 
-	srcCid, err := content.CidFromBytes(srcAsBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	if b, ok := m.kvStore[content.BlockKeyFromCid(srcCid)]; ok {
-		return b, nil
-	}
-
 	if len(m.kvStore) == m.maxCapacity {
 		err := m.resizeStore()
 		if err != nil {
@@ -63,7 +53,7 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 	}
 
 	// add new content to storage
-	addr, err := m.storage.Put(srcAsBytes, path.Join(m.rootDir, name))
+	addr, err := m.storage.Put(srcAsBytes, name)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +64,7 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 	}
 
 	// add block to the indexer key value store
-	m.kvStore[block.Key()] = block
+	m.kvStore[block.ID()] = block
 
 	return block, nil
 }
@@ -93,35 +83,28 @@ func (m *MemIndex) resizeStore() error {
 func (m *MemIndex) evictBlock() error {
 	rmAddr := m.evictStrategy.EvictBlock(m.kvStore)
 	if rmAddr != nil {
-		return m.storage.Delete(&content.Address{
-			Filepath: rmAddr.Filepath,
-		})
+		return m.storage.Delete(rmAddr)
 	}
 
 	return nil
 }
 
-func (m *MemIndex) Get(blockID content.BlockKey) (*content.Block, error) {
+func (m *MemIndex) Get(blockID cid.Cid) (*content.Block, []byte, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	_, err := cid.Decode(string(blockID))
-	if err != nil {
-		return nil, ErrInvalidCID
-	}
-
-	block, ok := m.kvStore[blockID]
+	block, ok := m.kvStore[blockID.String()]
 	if !ok {
-		return nil, ErrNoItemFound
+		return nil, nil, ErrNoItemFound
 	}
 
-	_, err = m.storage.Get(&block.Address)
+	d, err := m.storage.Get(&block.Address)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	block.IncHitsCount()
 
-	return block, nil
+	return block, d, nil
 }
 
 func (m *MemIndex) Size() int {

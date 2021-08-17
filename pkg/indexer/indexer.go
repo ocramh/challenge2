@@ -3,6 +3,7 @@ package indexer
 import (
 	"io"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ocramh/challenge2/pkg/content"
 )
 
@@ -14,7 +15,7 @@ type Indexer interface {
 
 	// Get retrives a block of content from storage identified byt its cid.
 	// An error will be returned if the provided cid doesn't match any available block
-	Get(content.BlockKey) (*content.Block, error)
+	Get(cid.Cid) (*content.Block, []byte, error)
 
 	// Size returns the current storage usage
 	Size() int
