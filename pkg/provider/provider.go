@@ -19,10 +19,11 @@ func New(cap int, rootDir string) (*Provider, error) {
 		return nil, err
 	}
 
+	evictStrategy := indexer.EvictLeastPopular{}
+	store := storage.NewBlocksStore(cap)
+
 	return &Provider{
-		idx: indexer.NewMemoryIndex(
-			rootDir, cap, indexer.EvictLeastPopular{}, storage.NewBlocksStorage(),
-		),
+		idx: indexer.NewMemoryIndex(evictStrategy, store),
 	}, nil
 }
 

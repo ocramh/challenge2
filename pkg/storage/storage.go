@@ -16,4 +16,10 @@ type StorageManager interface {
 	// Delete removes an item from storage at the specified address.
 	// It returns an error if the item cannot be found
 	Delete(c *content.Address) error
+
+	// Size returns the current storage usage
+	Size() int
+
+	// Capacity returns the total storage capacity
+	Capacity() int
 }

@@ -13,25 +13,31 @@ import (
 	"github.com/ocramh/challenge2/pkg/content"
 )
 
-// BlocksStorage is an implementation of the StorageManager interface using a
+// BlocksStore is an implementation of the StorageManager interface using a
 // DAG representation of the available content backed by an ipfs blockservice
-type BlocksStorage struct {
-	blockSrv bserv.BlockService
-	dagSrv   format.DAGService
-	rootNode *mdag.ProtoNode
+type BlocksStore struct {
+	blockSrv    bserv.BlockService
+	dagSrv      format.DAGService
+	rootNode    *mdag.ProtoNode
+	maxCapacity int
 }
 
-func NewBlocksStorage() *BlocksStorage {
+func NewBlocksStore(maxCapacity int) *BlocksStore {
 	blockStore := bstore.NewBlockstore(dstore.NewMapDatastore())
 	blockService := bserv.New(blockStore, offline.Exchange(blockStore))
-	return &BlocksStorage{
-		blockSrv: blockService,
-		dagSrv:   mdag.NewDAGService(blockService),
-		rootNode: mdag.NodeWithData(nil),
+	return &BlocksStore{
+		blockSrv:    blockService,
+		dagSrv:      mdag.NewDAGService(blockService),
+		rootNode:    mdag.NodeWithData(nil),
+		maxCapacity: maxCapacity,
 	}
 }
 
-func (b *BlocksStorage) Put(data []byte, name string) (*content.Address, error) {
+func (b *BlocksStore) Put(data []byte, name string) (*content.Address, error) {
+	if b.Size() >= b.maxCapacity {
+		return nil, ErrNoStorageAvailable
+	}
+
 	nd := mdag.NodeWithData(data)
 	err := b.rootNode.AddNodeLink(name, nd)
 	if err != nil {
@@ -50,7 +56,7 @@ func (b *BlocksStorage) Put(data []byte, name string) (*content.Address, error) 
 	}, nil
 }
 
-func (b *BlocksStorage) Get(addr *content.Address) ([]byte, error) {
+func (b *BlocksStore) Get(addr *content.Address) ([]byte, error) {
 	node, err := b.dagSrv.Get(context.TODO(), addr.Cid)
 	if err != nil {
 		return nil, err
@@ -59,7 +65,7 @@ func (b *BlocksStorage) Get(addr *content.Address) ([]byte, error) {
 	return node.RawData(), nil
 }
 
-func (b *BlocksStorage) Delete(addr *content.Address) error {
+func (b *BlocksStore) Delete(addr *content.Address) error {
 	err := b.rootNode.RemoveNodeLink(addr.NodeName)
 	if err != nil {
 		return err
@@ -68,6 +74,14 @@ func (b *BlocksStorage) Delete(addr *content.Address) error {
 	return b.dagSrv.Remove(context.TODO(), addr.Cid)
 }
 
-func (b *BlocksStorage) RootID() string {
-	return b.rootNode.String()
+// Size returns the number of the root node links.
+// While this is fine for demostaring purposes a more correct implemenation would
+// return the rootNode Size() which includes the total size of the data addressed by
+// the node, including the size ofreferences
+func (b *BlocksStore) Size() int {
+	return len(b.rootNode.Links())
+}
+
+func (b *BlocksStore) Capacity() int {
+	return b.maxCapacity
 }

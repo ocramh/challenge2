@@ -19,18 +19,14 @@ type KVStore map[string]*content.Block
 // Internally it has access to the underlying storage implementation for adding,
 // accessing, removing and syncing the actual data
 type MemIndex struct {
-	rootDir       string
-	maxCapacity   int
 	mu            sync.Mutex
 	kvStore       KVStore
 	evictStrategy Evictor
 	storage       storage.StorageManager
 }
 
-func NewMemoryIndex(rootDir string, cap int, ev Evictor, store storage.StorageManager) *MemIndex {
+func NewMemoryIndex(ev Evictor, store storage.StorageManager) *MemIndex {
 	return &MemIndex{
-		rootDir:       rootDir,
-		maxCapacity:   cap,
 		kvStore:       make(map[string]*content.Block),
 		evictStrategy: ev,
 		storage:       store,
@@ -45,18 +41,15 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 	buf.ReadFrom(src)
 	srcAsBytes := buf.Bytes()
 
-	if len(m.kvStore) == m.maxCapacity {
-		err := m.resizeStore()
-		if err != nil {
-			return nil, err
+	if m.storage.Size() >= m.storage.Capacity() {
+		resizeErr := m.resizeStore()
+		if resizeErr != nil {
+			return nil, resizeErr
 		}
 	}
 
 	// add new content to storage
 	addr, err := m.storage.Put(srcAsBytes, name)
-	if err != nil {
-		return nil, err
-	}
 
 	block, err := content.NewBlock(srcAsBytes, addr)
 	if err != nil {
@@ -70,7 +63,7 @@ func (m *MemIndex) Put(src io.Reader, name string) (*content.Block, error) {
 }
 
 func (m *MemIndex) resizeStore() error {
-	for len(m.kvStore) >= m.maxCapacity {
+	for m.storage.Size() >= m.storage.Capacity() {
 		err := m.evictBlock()
 		if err != nil {
 			return err
@@ -105,12 +98,4 @@ func (m *MemIndex) Get(blockID cid.Cid) (*content.Block, []byte, error) {
 	block.IncHitsCount()
 
 	return block, d, nil
-}
-
-func (m *MemIndex) Size() int {
-	return len(m.kvStore)
-}
-
-func (m *MemIndex) Capacity() int {
-	return m.maxCapacity
 }

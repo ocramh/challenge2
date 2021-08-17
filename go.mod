@@ -13,4 +13,5 @@ require (
 	github.com/multiformats/go-multihash v0.0.15
 	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.7.0
+	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 )

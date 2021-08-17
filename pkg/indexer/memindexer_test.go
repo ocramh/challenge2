@@ -16,7 +16,8 @@ var (
 )
 
 func TestPut(t *testing.T) {
-	idx := NewMemoryIndex("/root", 2, EvictLeastPopular{}, storage.NewNoopStore("/root"))
+	store := storage.NewSimpleStore("/root", 2)
+	idx := NewMemoryIndex(EvictLeastPopular{}, store)
 
 	testcases := []struct {
 		src              io.Reader
@@ -59,7 +60,8 @@ func TestPut(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	idx := NewMemoryIndex("/root", 2, EvictLeastPopular{}, storage.NewNoopStore("/root"))
+	store := storage.NewSimpleStore("/root", 2)
+	idx := NewMemoryIndex(EvictLeastPopular{}, store)
 
 	c1, err := idx.Put(bytes.NewReader(putContent1), "/addr1")
 	assert.NoError(t, err)
@@ -78,7 +80,9 @@ func TestGet(t *testing.T) {
 }
 
 func TestEvict(t *testing.T) {
-	idx := NewMemoryIndex("/root", 2, EvictLeastPopular{}, storage.NewNoopStore("/root"))
+	store := storage.NewSimpleStore("/root", 2)
+	idx := NewMemoryIndex(EvictLeastPopular{}, store)
+
 	c1, err := idx.Put(bytes.NewReader(putContent1), "/addr1")
 	assert.NoError(t, err)
 	c1.IncHitsCount()
@@ -100,4 +104,5 @@ func TestEvict(t *testing.T) {
 
 	expected := []string{c3.ID(), c1.ID()}
 	assert.ElementsMatch(t, expected, stored)
+	assert.Equal(t, store.Size(), 2)
 }
