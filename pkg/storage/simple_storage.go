@@ -28,6 +28,10 @@ func (n *SimpleStore) Put(b []byte, name string) (*content.Address, error) {
 		return nil, err
 	}
 
+	if n.Size() == n.Capacity() {
+		return nil, ErrNoStorageAvailable
+	}
+
 	n.store[cid.String()] = b
 
 	return &content.Address{

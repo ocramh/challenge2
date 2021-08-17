@@ -75,9 +75,9 @@ func (b *BlocksStore) Delete(addr *content.Address) error {
 }
 
 // Size returns the number of the root node links.
-// While this is fine for demostaring purposes a more correct implemenation would
+// While this is fine for a demonstrating purpose, a more correct implementation should
 // return the rootNode Size() which includes the total size of the data addressed by
-// the node, including the size ofreferences
+// the node, including the size of its references
 func (b *BlocksStore) Size() int {
 	return len(b.rootNode.Links())
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-// Address defines the location of a block of content, either identified by it CID or
+// Address defines the location of a block of content, either identified by its CID or
 // its file path
 type Address struct {
 	Cid      cid.Cid
