@@ -92,7 +92,8 @@ As new blocks of content are submitted by clients, the `MemIndexer` will check t
 The `Evictor` interface used by the `MemIndexer` type allows for more sophisticated algorithms to be used for removing least frequently accessed items.
 
 ## Further Considerations
-While the proposed solution is the result of applying newly absorbed concepts around content addressing to storage and retrieval, it should be seen as a working prototype rather than a ready-to-go solution. Few topics which haven't been explored here can be incorporated by expanding on plugging into the existing types and interfaces. These include
+While the proposed solution is the result of applying concepts related to content addressing to storage and retrieval, it should be seen as an experimental working prototype rather than a ready-to-go solution. Few topics which haven't been explored here can be incorporated by expanding on plugging into the existing types and interfaces. These include
+- alternatives and more structred ways of using linked data to represent content
 - the actual storage of files (and how to calculate the total storage size)
 - how to ensure consistency between the indexer and the storage types (IE how to keep them in sync)
 - how to load content from different root folders
